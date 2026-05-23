@@ -120,7 +120,7 @@ app.get("/photosOfUser/:id", async (req, res) => {
       user_id: req.params.id,
     }).populate("comments.user_id", "_id first_name last_name");
 
-    const baseUrl = `https://cckzwq-5000.csb.app/`;
+    const baseUrl = `https://cckzwq-5000.csb.app/images/`;
 
     const photosWithUrls = photos.map((photo) => ({
       ...photo._doc,
@@ -130,6 +130,48 @@ app.get("/photosOfUser/:id", async (req, res) => {
     res.status(200).json(photosWithUrls);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/commentsOfPhoto/:photo_id", requireAuth, async (req, res) => {
+  try {
+    const { photo_id } = req.params;
+    const { comment } = req.body;
+
+    const photo = await Photo.findById(photo_id);
+
+    if (!photo) {
+      return res.status(404).json({
+        message: "Photo not found",
+      });
+    }
+    if (!comment.trim()) {
+      return res.status(400).json({ message: "Comment can not be empty" });
+    }
+
+    photo.comments.push({
+      comment,
+      user_id: req.user._id,
+      date_time: new Date(),
+    });
+
+    await photo.save();
+
+    const updatedPhoto = await Photo.findById(photo_id).populate(
+      "comments.user_id",
+      "_id first_name last_name"
+    );
+
+    return res.status(200).json({
+      message: "Comment added successfully",
+      photo: updatedPhoto,
+    });
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      message: "Server error",
+    });
   }
 });
 
