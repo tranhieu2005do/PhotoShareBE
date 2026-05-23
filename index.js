@@ -226,6 +226,52 @@ app.post(
   }
 );
 
+//REGISTER
+app.post("/user/register", async (req, res) => {
+  try {
+    const {
+      first_name,
+      last_name,
+      location,
+      description,
+      occupation,
+      login_name,
+      password,
+    } = req.body;
+
+    const existed = await User.findOne({
+      login_name,
+    });
+
+    if (existed) {
+      return res.status(400).json({
+        message: "Login name already exists",
+      });
+    }
+
+    const user = await User.create({
+      first_name,
+      last_name,
+      location,
+      description,
+      occupation,
+      login_name,
+      password,
+    });
+
+    res.status(201).json({
+      message: "User created",
+      user,
+    });
+  } catch (err) {
+    console.log(err);
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
