@@ -1,67 +1,70 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-const {
-  userListModel,
-  userModel,
-  photoOfUserModel,
-  schemaInfo,
-} = require("./modelData/models");
+
+const connectDB = require("./modelData/connectDB");
+
+const User = require("./modelData/User");
+const Photo = require("./modelData/Photo");
 
 const app = express();
 const PORT = 5000;
 
+connectDB();
+
 app.use(cors());
 app.use(express.json());
 
-// Serve static images
 app.use("/images", express.static(path.join(__dirname, "images")));
 
-// API Endpoints as per Problem 2
-app.get("/test/info", (req, res) => {
+// GET USER LIST
+app.get("/user/list", async (req, res) => {
   try {
-    const info = schemaInfo();
-    res.status(200).json(info);
-  } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
+    const users = await User.find({}, "_id first_name last_name");
 
-app.get("/user/list", (req, res) => {
-  try {
-    const users = userListModel();
     res.status(200).json(users);
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: error.message });
   }
 });
 
-app.get("/user/:id", (req, res) => {
+// GET USER DETAIL
+app.get("/user/:id", async (req, res) => {
   try {
-    const user = userModel(req.params.id);
+    const user = await User.findById(req.params.id);
+
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({
+        error: "User not found",
+      });
     }
+
     res.status(200).json(user);
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: error.message });
   }
 });
 
-app.get("/photosOfUser/:id", (req, res) => {
+// GET PHOTOS OF USER
+app.get("/photosOfUser/:id", async (req, res) => {
   try {
-    const photos = photoOfUserModel(req.params.id);
+    const photos = await Photo.find({
+      user_id: req.params.id,
+    }).populate("comments.user_id", "_id first_name last_name");
+
     const baseUrl = `http://localhost:${PORT}/images/`;
-    const photosWithUrls = photos.map(photo => ({
-      ...photo,
-      file_name: baseUrl + photo.file_name
+
+    const photosWithUrls = photos.map((photo) => ({
+      ...photo._doc,
+      file_name: baseUrl + photo.file_name,
     }));
+
     res.status(200).json(photosWithUrls);
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: error.message });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`BE_v1 Server is running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
