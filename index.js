@@ -15,6 +15,23 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 
+const multer = require("multer");
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "images/");
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = Date.now() + "-" + file.originalname;
+
+    cb(null, uniqueName);
+  },
+});
+
+const upload = multer({
+  storage,
+});
+
 app.use("/images", express.static(path.join(__dirname, "images")));
 const JWT_SECRET = "photo-sharing-secret";
 const requireAuth = async (req, res, next) => {
@@ -174,6 +191,40 @@ app.post("/commentsOfPhoto/:photo_id", requireAuth, async (req, res) => {
     });
   }
 });
+
+app.post(
+  "/photos/new",
+  requireAuth,
+  upload.single("photo"),
+  async (req, res) => {
+    try {
+      console.log("PHOTO NEW");
+      if (!req.file) {
+        return res.status(400).json({
+          message: "Photo file is required",
+        });
+      }
+
+      const photo = await Photo.create({
+        file_name: req.file.filename,
+        date_time: new Date(),
+        user_id: req.user._id,
+        comments: [],
+      });
+
+      return res.status(200).json({
+        message: "Photo uploaded successfully",
+        data: photo,
+      });
+    } catch (err) {
+      console.error(err);
+
+      return res.status(500).json({
+        message: "Server error",
+      });
+    }
+  }
+);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
